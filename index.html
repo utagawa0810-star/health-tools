@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>体組成管理ツール</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif;
+      background: #f0f2f7;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 16px rgba(102,126,234,0.4);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.02em; }
+    header p  { font-size: 0.72rem; opacity: 0.75; margin-bottom: 2px; }
+
+    .btn-add {
+      background: white;
+      color: #667eea;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 22px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .btn-add:hover { background: #f0f0ff; transform: translateY(-1px); }
+
+    .btn-claude {
+      background: linear-gradient(135deg, #5b4af0, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(91,74,240,0.4);
+    }
+    .btn-claude:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* Claude Modal */
+    .claude-section { margin-bottom: 20px; }
+    .prompt-box {
+      background: #f7f7ff;
+      border: 1.5px solid #c8c0f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 0.8rem;
+      color: #555;
+      line-height: 1.6;
+      font-family: 'Menlo', monospace;
+      white-space: pre-wrap;
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #667eea;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .copy-btn:hover { opacity: 0.85; }
+    .claude-textarea {
+      width: 100%;
+      background: #f9f9ff;
+      border: 2px solid #e4e4f0;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 0.8rem;
+      font-family: 'Menlo', monospace;
+      color: #333;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      line-height: 1.5;
+    }
+    .claude-textarea:focus { border-color: #667eea; }
+    .import-alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin: 10px 0;
+    }
+    .alert-success { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+    .alert-error   { background: #ffebee; border: 1px solid #ef9a9a; color: #c62828; }
+    .preview-table-wrap {
+      background: #f7f8ff;
+      border: 1px solid #e0e0f0;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 10px;
+      overflow-x: auto;
+    }
+    .preview-table-wrap h4 { font-size: 0.82rem; color: #667eea; margin-bottom: 10px; font-weight: 700; }
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .preview-item {
+      background: white;
+      border-radius: 8px;
+      padding: 8px 10px;
+      border-left: 3px solid #667eea;
+    }
+    .preview-item .pi-label { font-size: 0.7rem; color: #999; }
+    .preview-item .pi-val   { font-size: 0.95rem; font-weight: 700; color: #1a1a2e; }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 18px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ---- Metric Tabs ---- */
+    .metric-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .metric-tab {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 2px solid #e0e0e0;
+      background: white;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #777;
+    }
+
+    .metric-tab.active {
+      border-color: var(--c);
+      background: var(--c);
+      color: white;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+
+    /* ---- Summary Grid ---- */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .summary-item {
+      background: #f7f8ff;
+      border-radius: 14px;
+      padding: 14px 12px;
+      border-left: 4px solid var(--c);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .summary-item:hover { transform: translateY(-2px); }
+
+    .summary-item .s-label {
+      font-size: 0.72rem;
+      color: #999;
+      margin-bottom: 5px;
+    }
+
+    .summary-item .s-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #1a1a2e;
+    }
+
+    .summary-item .s-unit {
+      font-size: 0.7rem;
+      color: #aaa;
+      margin-left: 2px;
+    }
+
+    .summary-item .s-change {
+      font-size: 0.72rem;
+      margin-top: 5px;
+      font-weight: 600;
+    }
+
+    .s-change.up-bad   { color: #e53935; }
+    .s-change.down-bad { color: #e53935; }
+    .s-change.up-good  { color: #43a047; }
+    .s-change.down-good{ color: #43a047; }
+    .s-change.neutral  { color: #aaa; }
+
+    /* ---- Table ---- */
+    .table-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .table-wrapper { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    thead th {
+      background: #f5f6ff;
+      padding: 10px 8px;
+      text-align: center;
+      font-weight: 700;
+      color: #555;
+      white-space: nowrap;
+      border-bottom: 2px solid #e8e8f0;
+      position: sticky;
+      top: 0;
+    }
+
+    tbody td {
+      padding: 9px 8px;
+      text-align: center;
+      border-bottom: 1px solid #f0f0f5;
+      color: #333;
+    }
+
+    tbody tr:hover td { background: #fafaff; }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+      padding: 2px 6px;
+    }
+
+    .btn-delete:hover { color: #e53935; }
+
+    .btn-csv {
+      background: #43a047;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-csv:hover { opacity: 0.85; }
+
+    .btn-edit {
+      background: none;
+      border: none;
+      color: #bbb;
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 2px 4px;
+      transition: color 0.2s;
+    }
+    .btn-edit:hover { color: #667eea; }
+
+    /* ---- Modal ---- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(30,20,60,0.45);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(3px);
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: white;
+      border-radius: 22px;
+      padding: 30px;
+      width: min(640px, 95vw);
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+      animation: slideUp 0.2s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 22px;
+      color: #1a1a2e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+
+    .form-group label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #666;
+    }
+
+    .form-group input {
+      border: 2px solid #e4e4f0;
+      border-radius: 9px;
+      padding: 9px 12px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+      outline: none;
+      color: #1a1a2e;
+    }
+
+    .form-group input:focus { border-color: #667eea; }
+
+    .full-width { grid-column: 1 / -1; }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 22px;
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 28px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-save:hover { opacity: 0.9; }
+
+    .btn-cancel {
+      background: #f0f0f5;
+      color: #777;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    /* ---- Empty State ---- */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #bbb;
+      grid-column: 1 / -1;
+    }
+
+    .empty-state .ei { font-size: 2.2rem; margin-bottom: 10px; }
+    .empty-state p   { font-size: 0.9rem; }
+
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      z-index: 999;
+      transition: transform 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ---- History Card (mobile) ---- */
+    .history-card {
+      background: #f7f8ff;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      border-left: 4px solid #667eea;
+    }
+    .history-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .history-card-date {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #1a1a2e;
+    }
+    .history-card-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .history-card-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .history-card-item {
+      background: white;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .history-card-item .hc-label {
+      font-size: 0.68rem;
+      color: #999;
+    }
+    .history-card-item .hc-val {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .history-card-item .hc-unit {
+      font-size: 0.68rem;
+      color: #aaa;
+      margin-left: 1px;
+    }
+
+    /* Desktop: hide mobile cards, show table */
+    .history-cards-mobile { display: none; }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 640px) {
+      .history-cards-mobile { display: block; }
+      header {
+        padding: 14px 16px;
+        padding-top: calc(14px + env(safe-area-inset-top));
+      }
+      header h1 { font-size: 1.1rem; }
+      .btn-add { padding: 9px 14px; font-size: 0.8rem; }
+      .btn-claude { padding: 9px 12px; font-size: 0.78rem; }
+
+      .container { padding: 14px 10px; }
+      .card { padding: 16px 12px; border-radius: 14px; }
+
+      .metric-tabs { gap: 6px; }
+      .metric-tab { padding: 5px 10px; font-size: 0.72rem; }
+
+      .chart-container { height: 220px; }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      .summary-item { padding: 10px 10px; border-radius: 10px; }
+      .summary-item .s-value { font-size: 1rem; }
+
+      .table-wrapper table { display: none; }
+
+      .form-grid { grid-template-columns: 1fr; gap: 10px; }
+      .full-width { grid-column: auto; }
+
+      .modal { padding: 22px 16px; border-radius: 18px; }
+      .modal-title { font-size: 1rem; }
+      .form-group input { font-size: 16px; /* iOS zoom prevention */ }
+
+      .btn-save, .btn-cancel { padding: 12px 18px; min-height: 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <p>Health Tracker</p>
+    <h1>体組成管理ツール</h1>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button class="btn-claude" onclick="openClaudeModal()">🤖 Claude連携</button>
+    <button class="btn-add" onclick="openModal()">+ 記録を追加</button>
+  </div>
+</header>
+<nav style="background:#f0f2f7;border-bottom:1px solid #e0e0e8;padding:8px 18px;display:flex;gap:16px;font-size:0.82rem;font-weight:600;">
+  <span style="color:#667eea;border-bottom:2px solid #667eea;padding-bottom:4px;">体組成管理</span>
+  <a href="workout.html" style="color:#999;text-decoration:none;">筋トレ記録</a>
+</nav>
+
+<div class="container">
+
+  <!-- Chart Card -->
+  <div class="card">
+    <div class="card-title">📈 推移グラフ</div>
+    <div class="metric-tabs" id="metricTabs"></div>
+    <div class="chart-container">
+      <canvas id="mainChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Summary Card -->
+  <div class="card">
+    <div class="card-title">📋 最新の記録</div>
+    <div class="summary-grid" id="summaryGrid">
+      <div class="empty-state">
+        <div class="ei">📊</div>
+        <p>まだデータがありません<br>「記録を追加」から入力してください</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Card -->
+  <div class="card">
+    <div class="table-header-row">
+      <div class="card-title" style="margin-bottom:0">📅 記録履歴</div>
+      <button class="btn-csv" onclick="exportCSV()">CSV 出力</button>
+    </div>
+    <div class="table-wrapper">
+      <div id="tableContainer"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Claude連携 Modal -->
+<div class="modal-overlay" id="claudeModalOverlay" onclick="handleClaudeOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-title">🤖 Claude連携で記録を取り込む</div>
+
+    <div class="claude-section">
+      <div style="font-size:0.85rem;color:#777;line-height:1.7;margin-bottom:12px;">
+        Claudeに体組成データを貼り付けて以下のプロンプトを送ると、JSONが出力されます。<br>
+        それをコピーして下の欄に貼り付けるだけで記録できます。
+      </div>
+      <div style="font-size:0.78rem;font-weight:700;color:#888;margin-bottom:6px;">Claudeへのプロンプト（コピーして使用）</div>
+      <div class="prompt-box" id="claudePromptBox">以下の体組成データを、このJSONフォーマットで出力してください。
+ない項目はnullにしてください。
+
+{"date":"YYYY-MM-DD","weight":null,"bodyFatRate":null,"bodyFatMass":null,"visceralFat":null,"skeletalMuscle":null,"boneMass":null,"waterContent":null,"bmr":null,"leanMass":null,"smi":null}
+
+各キーの意味:
+weight=体重(kg), bodyFatRate=体脂肪率(%), bodyFatMass=体脂肪量(kg),
+visceralFat=内臓脂肪指数, skeletalMuscle=骨格筋量(kg), boneMass=推定骨量(kg),
+waterContent=水分量(kg), bmr=基礎代謝量(kcal), leanMass=四肢の除脂肪量(kg), smi=SMI(kg/m²)
+
+---ここに体組成データを貼る---<button class="copy-btn" onclick="copyClaudePrompt()">コピー</button></div>
+    </div>
+
+    <div class="claude-section">
+      <div style="font-size:0.78rem;font-weight:700;color:#888;margin-bottom:6px;">ClaudeのJSON出力をここに貼り付け</div>
+      <textarea class="claude-textarea" id="claudeJsonInput" rows="6"
+        placeholder='{"date":"2026-04-11","weight":65.5,"bodyFatRate":18.5,"bodyFatMass":12.1,"visceralFat":8,"skeletalMuscle":30.2,"boneMass":2.9,"waterContent":36.0,"bmr":1580,"leanMass":21.5,"smi":7.80}'></textarea>
+      <div id="claudeAlert"></div>
+      <div id="claudePreview"></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeClaudeModal()">閉じる</button>
+      <button class="btn-cancel" onclick="previewClaudeImport()">プレビュー</button>
+      <button class="btn-save" onclick="confirmClaudeImport()">取り込む</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-title">✏️ <span id="modalTitleText">新しい記録を追加</span></div>
+    <div class="form-grid">
+      <div class="form-group full-width">
+        <label>日付</label>
+        <input type="date" id="f_date">
+      </div>
+      <div class="form-group">
+        <label>体重 (kg)</label>
+        <input type="number" id="f_weight" step="0.1" placeholder="65.0">
+      </div>
+      <div class="form-group">
+        <label>体脂肪率 (%)</label>
+        <input type="number" id="f_bodyFatRate" step="0.1" placeholder="20.0">
+      </div>
+      <div class="form-group">
+        <label>体脂肪量 (kg) <span id="bodyFatMassAutoLabel" style="font-size:0.7rem;color:#43a047;font-weight:700;display:none;">自動計算</span></label>
+        <input type="number" id="f_bodyFatMass" step="0.1" placeholder="自動計算 or 手入力">
+      </div>
+      <div class="form-group">
+        <label>内臓脂肪指数</label>
+        <input type="number" id="f_visceralFat" step="0.5" placeholder="10">
+      </div>
+      <div class="form-group">
+        <label>骨格筋量 (kg)</label>
+        <input type="number" id="f_skeletalMuscle" step="0.1" placeholder="28.0">
+      </div>
+      <div class="form-group">
+        <label>推定骨量 (kg)</label>
+        <input type="number" id="f_boneMass" step="0.1" placeholder="2.8">
+      </div>
+      <div class="form-group">
+        <label>水分量 (kg)</label>
+        <input type="number" id="f_waterContent" step="0.1" placeholder="35.0">
+      </div>
+      <div class="form-group">
+        <label>基礎代謝量 (kcal)</label>
+        <input type="number" id="f_bmr" step="1" placeholder="1500">
+      </div>
+      <div class="form-group">
+        <label>四肢の除脂肪量 (kg)</label>
+        <input type="number" id="f_leanMass" step="0.1" placeholder="20.0">
+      </div>
+      <div class="form-group">
+        <label>SMI (kg/m²)</label>
+        <input type="number" id="f_smi" step="0.01" placeholder="7.50">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-save" onclick="saveRecord()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Config ----
+const METRICS = [
+  { key: 'weight',         label: '体重',          unit: 'kg',    color: '#667eea', hib: null  },
+  { key: 'bodyFatRate',    label: '体脂肪率',       unit: '%',     color: '#f7744f', hib: false },
+  { key: 'bodyFatMass',    label: '体脂肪量',       unit: 'kg',    color: '#f7c24f', hib: false },
+  { key: 'visceralFat',    label: '内臓脂肪指数',   unit: '',      color: '#c24ff7', hib: false },
+  { key: 'skeletalMuscle', label: '骨格筋量',       unit: 'kg',    color: '#4fc78f', hib: true  },
+  { key: 'boneMass',       label: '推定骨量',       unit: 'kg',    color: '#f74fa8', hib: null  },
+  { key: 'waterContent',   label: '水分量',         unit: 'kg',    color: '#4fc8f7', hib: null  },
+  { key: 'bmr',            label: '基礎代謝量',     unit: 'kcal',  color: '#f7a44f', hib: true  },
+  { key: 'leanMass',       label: '四肢の除脂肪量', unit: 'kg',    color: '#7af74f', hib: true  },
+  { key: 'smi',            label: 'SMI',            unit: 'kg/m²', color: '#f74f4f', hib: true  },
+];
+
+// ---- State ----
+let records = [];
+let activeMetric = METRICS[0].key;
+let chart = null;
+let editingDate = null;
+
+// ---- Storage ----
+function calcBodyFatMass(weight, bodyFatRate) {
+  if (weight != null && bodyFatRate != null) {
+    return Math.round(weight * bodyFatRate / 100 * 10) / 10;
+  }
+  return null;
+}
+
+function loadData() {
+  try {
+    const s = localStorage.getItem('bodyCompositionData_v2');
+    if (s) records = JSON.parse(s);
+  } catch(e) { records = []; }
+  records.sort((a, b) => a.date.localeCompare(b.date));
+
+  // 体脂肪量が未入力で体重・体脂肪率が揃っているレコードを自動補完
+  let updated = false;
+  records.forEach(r => {
+    if ((r.bodyFatMass == null) && r.weight != null && r.bodyFatRate != null) {
+      r.bodyFatMass = calcBodyFatMass(r.weight, r.bodyFatRate);
+      updated = true;
+    }
+  });
+  if (updated) localStorage.setItem('bodyCompositionData_v2', JSON.stringify(records));
+}
+
+function saveData() {
+  localStorage.setItem('bodyCompositionData_v2', JSON.stringify(records));
+}
+
+// ---- Modal ----
+function openModal(dateForEdit) {
+  editingDate = dateForEdit || null;
+  const isEdit = !!editingDate;
+  document.getElementById('modalTitleText').textContent = isEdit ? '記録を編集' : '新しい記録を追加';
+
+  if (isEdit) {
+    const rec = records.find(r => r.date === editingDate);
+    if (rec) {
+      document.getElementById('f_date').value = rec.date;
+      document.getElementById('f_date').disabled = false;
+      METRICS.forEach(m => {
+        const el = document.getElementById(`f_${m.key}`);
+        el.value = rec[m.key] !== null && rec[m.key] !== undefined ? rec[m.key] : '';
+      });
+    }
+  } else {
+    document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('f_date').disabled = false;
+    clearForm();
+  }
+
+  autoFillBodyFatMass();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  editingDate = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function autoFillBodyFatMass() {
+  const w  = parseFloat(document.getElementById('f_weight').value);
+  const bf = parseFloat(document.getElementById('f_bodyFatRate').value);
+  const bfmEl  = document.getElementById('f_bodyFatMass');
+  const lblEl  = document.getElementById('bodyFatMassAutoLabel');
+  if (!isNaN(w) && !isNaN(bf) && bfmEl.value === '') {
+    bfmEl.value = calcBodyFatMass(w, bf);
+    lblEl.style.display = 'inline';
+  } else {
+    lblEl.style.display = 'none';
+  }
+}
+
+function saveRecord() {
+  const date = document.getElementById('f_date').value;
+  if (!date) { showToast('日付を入力してください'); return; }
+
+  // 体脂肪量が空なら自動計算して補完してから保存
+  autoFillBodyFatMass();
+
+  const record = { date };
+  METRICS.forEach(m => {
+    const v = document.getElementById(`f_${m.key}`).value;
+    record[m.key] = v !== '' ? parseFloat(v) : null;
+  });
+
+  // 編集時に日付が変わった場合、旧日付のレコードも削除する
+  records = records.filter(r => r.date !== date && r.date !== editingDate);
+  records.push(record);
+  records.sort((a, b) => a.date.localeCompare(b.date));
+
+  const wasEditing = !!editingDate;
+  saveData();
+  closeModal();
+  clearForm();
+  render();
+  showToast(wasEditing ? '記録を更新しました' : '記録を保存しました');
+}
+
+function clearForm() {
+  METRICS.forEach(m => { document.getElementById(`f_${m.key}`).value = ''; });
+}
+
+function deleteRecord(date) {
+  if (!confirm(`${fmtDate(date)} の記録を削除しますか？`)) return;
+  records = records.filter(r => r.date !== date);
+  saveData();
+  render();
+  showToast('記録を削除しました');
+}
+
+// ---- Helpers ----
+function fmtDate(d) {
+  const dt = new Date(d + 'T00:00:00');
+  return `${dt.getFullYear()}/${pad(dt.getMonth()+1)}/${pad(dt.getDate())}`;
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function fmtVal(v) {
+  if (v === null || v === undefined) return '—';
+  return String(v);
+}
+
+// ---- Tabs ----
+function renderTabs() {
+  document.getElementById('metricTabs').innerHTML = METRICS.map(m => `
+    <button
+      class="metric-tab ${m.key === activeMetric ? 'active' : ''}"
+      style="--c: ${m.color}"
+      onclick="setMetric('${m.key}')"
+    >${m.label}</button>
+  `).join('');
+}
+
+function setMetric(key) {
+  activeMetric = key;
+  renderTabs();
+  updateChart();
+}
+
+// ---- Chart ----
+function initChart() {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(20,10,50,0.85)',
+          titleColor: '#eee',
+          bodyColor: '#fff',
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              const m = METRICS.find(x => x.key === activeMetric);
+              return ` ${ctx.parsed.y} ${m.unit}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#f0f0f8' }, ticks: { font: { size: 11 }, color: '#999' } },
+        y: { grid: { color: '#f0f0f8' }, ticks: { font: { size: 11 }, color: '#999' } }
+      }
+    }
+  });
+}
+
+function updateChart() {
+  const m = METRICS.find(x => x.key === activeMetric);
+  const valid = records.filter(r => r[m.key] !== null && r[m.key] !== undefined);
+
+  chart.data.labels = valid.map(r => fmtDate(r.date));
+  chart.data.datasets = [{
+    data: valid.map(r => r[m.key]),
+    borderColor: m.color,
+    backgroundColor: m.color + '18',
+    borderWidth: 2.5,
+    pointRadius: 5,
+    pointBackgroundColor: m.color,
+    pointBorderColor: 'white',
+    pointBorderWidth: 2,
+    pointHoverRadius: 7,
+    tension: 0.35,
+    fill: true,
+  }];
+
+  chart.options.scales.y.title = {
+    display: true,
+    text: m.unit ? `${m.label} (${m.unit})` : m.label,
+    font: { size: 11 },
+    color: '#aaa',
+  };
+
+  chart.update();
+}
+
+// ---- Summary ----
+function renderSummary() {
+  const grid = document.getElementById('summaryGrid');
+  if (records.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="ei">📊</div><p>まだデータがありません<br>「記録を追加」から入力してください</p></div>`;
+    return;
+  }
+
+  const latest = records[records.length - 1];
+  const prev   = records.length >= 2 ? records[records.length - 2] : null;
+
+  grid.innerHTML = METRICS.map(m => {
+    const val     = latest[m.key];
+    const prevVal = prev ? prev[m.key] : null;
+
+    let changeHTML = '';
+    if (val != null && prevVal != null) {
+      const diff = +(val - prevVal).toFixed(2);
+      const sign = diff > 0 ? '+' : '';
+      let cls = 'neutral';
+      if (diff !== 0) {
+        if (m.hib === true)  cls = diff > 0 ? 'up-good'  : 'down-bad';
+        if (m.hib === false) cls = diff > 0 ? 'up-bad'   : 'down-good';
+      }
+      const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '→';
+      changeHTML = `<div class="s-change ${cls}">${arrow} ${sign}${diff} ${m.unit}</div>`;
+    }
+
+    return `
+      <div class="summary-item" style="--c: ${m.color}" onclick="setMetric('${m.key}')" title="グラフで確認">
+        <div class="s-label">${m.label}</div>
+        <div>
+          <span class="s-value">${val != null ? val : '—'}</span>
+          ${val != null ? `<span class="s-unit">${m.unit}</span>` : ''}
+        </div>
+        ${changeHTML}
+      </div>
+    `;
+  }).join('');
+}
+
+// ---- Table ----
+function renderTable() {
+  const container = document.getElementById('tableContainer');
+  if (records.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="ei">📝</div><p>記録がありません</p></div>`;
+    return;
+  }
+
+  // Desktop: table
+  const rows = [...records].reverse().map(r => `
+    <tr>
+      <td style="white-space:nowrap;font-weight:600;color:#444">${fmtDate(r.date)}</td>
+      ${METRICS.map(m => `<td>${fmtVal(r[m.key])}</td>`).join('')}
+      <td style="white-space:nowrap">
+        <button class="btn-edit" onclick="openModal('${r.date}')" title="編集">✎</button>
+        <button class="btn-delete" onclick="deleteRecord('${r.date}')" title="削除">✕</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Mobile: cards
+  const cards = [...records].reverse().map(r => {
+    const items = METRICS.map(m => {
+      const v = r[m.key];
+      return `<div class="history-card-item">
+        <div class="hc-label">${m.label}</div>
+        <div>${v != null ? `<span class="hc-val">${v}</span><span class="hc-unit">${m.unit}</span>` : '<span class="hc-val" style="color:#ccc">—</span>'}</div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="history-card">
+      <div class="history-card-header">
+        <span class="history-card-date">${fmtDate(r.date)}</span>
+        <div class="history-card-actions">
+          <button class="btn-edit" onclick="openModal('${r.date}')" title="編集" style="font-size:1.1rem;padding:6px 8px;">✎</button>
+          <button class="btn-delete" onclick="deleteRecord('${r.date}')" title="削除" style="font-size:1.1rem;padding:6px 8px;">✕</button>
+        </div>
+      </div>
+      <div class="history-card-grid">${items}</div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          ${METRICS.map(m => `<th>${m.label}<br><span style="font-weight:400;color:#bbb;font-size:0.7rem">${m.unit || '—'}</span></th>`).join('')}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="history-cards-mobile">${cards}</div>
+  `;
+}
+
+// ---- CSV Export ----
+function exportCSV() {
+  if (records.length === 0) { showToast('エクスポートするデータがありません'); return; }
+
+  const header = ['日付', ...METRICS.map(m => `${m.label}${m.unit ? '(' + m.unit + ')' : ''}`)].join(',');
+  const body = records.map(r =>
+    [r.date, ...METRICS.map(m => r[m.key] != null ? r[m.key] : '')].join(',')
+  );
+
+  const csv = '\uFEFF' + [header, ...body].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `体組成データ_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSVをダウンロードしました');
+}
+
+// ---- Toast ----
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+// ---- Claude連携 ----
+let pendingClaudeImport = null;
+
+function openClaudeModal() {
+  document.getElementById('claudeJsonInput').value = '';
+  document.getElementById('claudeAlert').innerHTML = '';
+  document.getElementById('claudePreview').innerHTML = '';
+  pendingClaudeImport = null;
+  document.getElementById('claudeModalOverlay').classList.add('open');
+}
+
+function closeClaudeModal() {
+  document.getElementById('claudeModalOverlay').classList.remove('open');
+  pendingClaudeImport = null;
+}
+
+function handleClaudeOverlayClick(e) {
+  if (e.target === document.getElementById('claudeModalOverlay')) closeClaudeModal();
+}
+
+function copyClaudePrompt() {
+  const text = document.getElementById('claudePromptBox').innerText.replace('コピー', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#claudePromptBox .copy-btn');
+    btn.textContent = 'コピー済！';
+    setTimeout(() => { btn.textContent = 'コピー'; }, 2000);
+  });
+}
+
+function setClaudeAlert(msg, type) {
+  document.getElementById('claudeAlert').innerHTML =
+    msg ? `<div class="import-alert alert-${type}">${msg}</div>` : '';
+}
+
+function parseClaudeJson(text) {
+  const codeMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  return JSON.parse(codeMatch ? codeMatch[1].trim() : text.trim());
+}
+
+function previewClaudeImport() {
+  const text = document.getElementById('claudeJsonInput').value.trim();
+  if (!text) { setClaudeAlert('JSONを貼り付けてください', 'error'); return; }
+  try {
+    const data = parseClaudeJson(text);
+    if (!data.date) throw new Error('dateが見つかりません');
+
+    pendingClaudeImport = data;
+
+    const items = METRICS.map(m => {
+      const v = data[m.key];
+      return `<div class="preview-item">
+        <div class="pi-label">${m.label}${m.unit ? ' ('+m.unit+')' : ''}</div>
+        <div class="pi-val">${v != null ? v : '—'}</div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('claudePreview').innerHTML = `
+      <div class="preview-table-wrap">
+        <h4>プレビュー — ${data.date}</h4>
+        <div class="preview-grid">${items}</div>
+      </div>`;
+    setClaudeAlert('内容を確認して「取り込む」をクリックしてください', 'success');
+  } catch(e) {
+    setClaudeAlert('JSONの解析に失敗しました: ' + e.message, 'error');
+    document.getElementById('claudePreview').innerHTML = '';
+    pendingClaudeImport = null;
+  }
+}
+
+function confirmClaudeImport() {
+  if (!pendingClaudeImport) { previewClaudeImport(); return; }
+  const data = pendingClaudeImport;
+  const record = { date: data.date };
+  METRICS.forEach(m => {
+    record[m.key] = (data[m.key] != null) ? Number(data[m.key]) : null;
+  });
+  records = records.filter(r => r.date !== record.date);
+  records.push(record);
+  records.sort((a, b) => a.date.localeCompare(b.date));
+  saveData();
+  render();
+  closeClaudeModal();
+  showToast(`✅ ${record.date} の記録を取り込みました`);
+}
+
+// ---- Main ----
+function render() {
+  renderTabs();
+  updateChart();
+  renderSummary();
+  renderTable();
+}
+
+// 体重・体脂肪率変更時に体脂肪量を自動計算
+['f_weight', 'f_bodyFatRate'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    document.getElementById('f_bodyFatMass').value = '';
+    autoFillBodyFatMass();
+  });
+});
+document.getElementById('f_bodyFatMass').addEventListener('input', () => {
+  document.getElementById('bodyFatMassAutoLabel').style.display = 'none';
+});
+
+loadData();
+initChart();
+render();
+</script>
+</body>
+</html>

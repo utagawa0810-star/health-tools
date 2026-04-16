@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>筋トレ記録ツール</title>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --bg2: #1a1a2e;
+      --bg3: #12121f;
+      --border: #2a2a4a;
+      --text: #e0e0e0;
+      --text2: #8080a0;
+      --accent: #5b6af0;
+      --success: #2a6a40;
+      --success-text: #80ffb0;
+      --danger: #e05555;
+      --nav-h: 64px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 16px 20px;
+      padding-top: calc(16px + env(safe-area-inset-top));
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; color: #fff; }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0; right: 0;
+      height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+      background: #13131f;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-size: 0.65rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.2s;
+      padding: 8px 4px;
+    }
+    .nav-item .nav-icon { font-size: 1.3rem; line-height: 1; }
+    .nav-item.active { color: var(--accent); }
+
+    /* ── Container ── */
+    .container { max-width: 680px; margin: 0 auto; padding: 16px 14px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    /* ── Form ── */
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .form-group label { font-size: 0.75rem; color: var(--text2); font-weight: 600; }
+    .form-group input, .form-group select, .form-group textarea {
+      background: var(--bg3);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 16px; /* iOSズーム防止 */
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+      -webkit-appearance: none;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--accent);
+    }
+    .form-group select option { background: var(--bg2); }
+    .form-group textarea { resize: none; font-family: 'Menlo', monospace; font-size: 13px; line-height: 1.5; }
+
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 13px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      min-height: 48px;
+    }
+    .btn:active { transform: scale(0.96); opacity: 0.85; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-danger   { background: var(--danger); color: #fff; }
+    .btn-secondary{ background: var(--border); color: #c0c0e0; }
+    .btn-success  { background: var(--success); color: var(--success-text); }
+    .btn-block    { width: 100%; }
+    .btn-sm       { padding: 8px 14px; font-size: 0.8rem; min-height: 36px; border-radius: 8px; }
+    .btn-row      { display: flex; gap: 10px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ── Stats ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat-card .val { font-size: 1.7rem; font-weight: 800; color: var(--accent); }
+    .stat-card .lbl { font-size: 0.72rem; color: var(--text2); margin-top: 4px; }
+
+    /* ── Record Cards (mobile list) ── */
+    .rec-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .rec-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .rec-card-title { font-size: 1rem; font-weight: 700; }
+    .rec-card-date  { font-size: 0.75rem; color: var(--text2); }
+    .rec-card-meta  { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+    .rec-card-nums  { display: flex; gap: 6px; margin-bottom: 8px; }
+    .num-pill {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .num-pill .np-label { font-size: 0.65rem; color: var(--text2); display: block; }
+    .num-pill .np-val   { font-weight: 700; color: var(--text); }
+    .rec-card-actions { display: flex; gap: 8px; }
+    .rec-memo { font-size: 0.78rem; color: var(--text2); margin-bottom: 8px; }
+    .vol-text { font-size: 0.75rem; color: #a0c0ff; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .part-chest    { background: #3a2020; color: #ff9090; }
+    .part-back     { background: #1e3a2a; color: #80ffb0; }
+    .part-shoulder { background: #2a2a1e; color: #ffe090; }
+    .part-arm      { background: #2a1e3a; color: #d090ff; }
+    .part-leg      { background: #1e2a3a; color: #90c0ff; }
+    .part-core     { background: #3a2a1e; color: #ffb870; }
+    .part-other    { background: #2a2a2a; color: #c0c0c0; }
+
+    /* ── Filter ── */
+    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ── Summary ── */
+    .summary-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .summary-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .summary-card-title { font-size: 0.95rem; font-weight: 700; }
+    .summary-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .s-pill {
+      background: var(--bg2);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.78rem;
+    }
+    .s-pill span { color: var(--text2); font-size: 0.68rem; display: block; }
+
+    /* ── Day Group ── */
+    .day-group {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .day-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 4px;
+    }
+    .day-group-date {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .day-group-info {
+      font-size: 0.72rem;
+      color: var(--text2);
+    }
+    .day-group-parts {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 6px 16px 12px;
+    }
+    .day-group-body {
+      border-top: 1px solid var(--border);
+    }
+    .day-rec-row {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1a1a30;
+    }
+    .day-rec-row:last-child { border-bottom: none; }
+    .day-rec-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .day-rec-exercise {
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .day-rec-nums {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .day-rec-num {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 8px;
+    }
+    .day-rec-vol {
+      font-size: 0.72rem;
+      color: #a0c0ff;
+      margin-left: auto;
+    }
+
+    /* ── Empty ── */
+    .empty { text-align: center; padding: 40px 20px; color: #6060a0; font-size: 0.9rem; }
+
+    /* ── Tab Panels ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Claude連携 ── */
+    .claude-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #3a2060, #1e3a60);
+      border: 1px solid #5b4af0;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      color: #c0b0ff;
+      margin-bottom: 12px;
+    }
+    .prompt-box {
+      background: #0c0c18;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 0.78rem;
+      color: #9090c0;
+      line-height: 1.6;
+      font-family: 'Menlo', monospace;
+      white-space: pre-wrap;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    .copy-btn {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      background: var(--border);
+      border: none;
+      color: #c0c0e0;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .alert {
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      margin: 10px 0;
+    }
+    .alert-success { background: #0e2a1a; border: 1px solid #2a6a40; color: #80d090; }
+    .alert-error   { background: #2a0e0e; border: 1px solid #6a2a2a; color: #d08080; }
+    .preview-card {
+      background: #0e1e14;
+      border: 1px solid #1a3a24;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 10px;
+    }
+    .preview-card h3 { font-size: 0.82rem; color: #60c080; margin-bottom: 10px; }
+    .preview-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid #1a3a24;
+      flex-wrap: wrap;
+    }
+    .preview-row:last-child { border-bottom: none; }
+    .preview-ex { font-weight: 700; font-size: 0.88rem; flex: 1; min-width: 100px; }
+    .preview-detail { font-size: 0.78rem; color: #9090b0; }
+
+    /* ── Desktop enhancements ── */
+    @media (min-width: 640px) {
+      .container { padding: 24px 20px; }
+      .stats-grid { grid-template-columns: repeat(4, 1fr); }
+      .form-row-mobile { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+      .form-group input, .form-group select { font-size: 0.92rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.5rem;">💪</span>
+  <h1>筋トレ記録ツール</h1>
+</header>
+<nav style="background:#0f0f13;border-bottom:1px solid var(--border);padding:8px 18px;display:flex;gap:16px;font-size:0.82rem;font-weight:600;">
+  <a href="index.html" style="color:#8080a0;text-decoration:none;">体組成管理</a>
+  <span style="color:#5b6af0;border-bottom:2px solid #5b6af0;padding-bottom:4px;">筋トレ記録</span>
+</nav>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-grid" id="stats-grid"></div>
+
+  <!-- ===== Tab: 記録追加 ===== -->
+  <div class="tab-panel active" id="tab-add">
+    <div class="card">
+      <div class="card-title">記録を追加</div>
+
+      <div class="form-row-2">
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="inp-date">
+        </div>
+        <div class="form-group">
+          <label>部位</label>
+          <select id="inp-part">
+            <option value="胸">胸 (Chest)</option>
+            <option value="背中">背中 (Back)</option>
+            <option value="肩">肩 (Shoulder)</option>
+            <option value="腕">腕 (Arm)</option>
+            <option value="脚">脚 (Leg)</option>
+            <option value="体幹">体幹 (Core)</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>種目</label>
+        <input type="text" id="inp-exercise" placeholder="例: ベンチプレス" list="exercise-list" autocomplete="off">
+        <datalist id="exercise-list"></datalist>
+      </div>
+
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>重量 (kg)</label>
+          <input type="number" id="inp-weight" min="0" step="0.5" placeholder="60" inputmode="decimal">
+        </div>
+        <div class="form-group">
+          <label>レップ数</label>
+          <input type="number" id="inp-reps" min="1" placeholder="10" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label>セット数</label>
+          <input type="number" id="inp-sets" min="1" placeholder="3" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>メモ（任意）</label>
+        <input type="text" id="inp-memo" placeholder="補助・フォーム etc.">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="clearForm()">クリア</button>
+        <button class="btn btn-primary" id="save-btn" onclick="saveRecord()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab: 記録一覧 ===== -->
+  <div class="tab-panel" id="tab-list">
+
+    <!-- Filter -->
+    <div class="card">
+      <div class="card-title">絞り込み</div>
+      <div class="filter-grid">
+        <div class="form-group" style="margin-bottom:0">
+          <label>部位</label>
+          <select id="f-part">
+            <option value="">すべて</option>
+            <option value="胸">胸</option>
+            <option value="背中">背中</option>
+            <option value="肩">肩</option>
+            <option value="腕">腕</option>
+            <option value="脚">脚</option>
+            <option value="体幹">体幹</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>種目</label>
+          <input type="text" id="f-exercise" placeholder="キーワード">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>開始日</label>
+          <input type="date" id="f-from">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>終了日</label>
+          <input type="date" id="f-to">
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-block" style="margin-top:12px;" onclick="applyFilter()">絞り込む</button>
+    </div>
+
+    <div id="record-list"></div>
+  </div>
+
+  <!-- ===== Tab: サマリー ===== -->
+  <div class="tab-panel" id="tab-summary">
+    <div id="summary-list"></div>
+  </div>
+
+  <!-- ===== Tab: Claude連携 ===== -->
+  <div class="tab-panel" id="tab-claude">
+    <div class="card">
+      <div class="claude-badge">🤖 Claude連携の使い方</div>
+      <p style="font-size:0.83rem;color:#9090b0;line-height:1.7;margin-bottom:14px;">
+        Claudeに筋トレログを貼り付けて下のプロンプトを送ると、JSONが返ってきます。それを「JSONを貼り付けて取り込む」欄に貼るだけで記録できます。
+      </p>
+      <div class="card-title">Claudeへのプロンプト</div>
+      <div class="prompt-box">以下の筋トレログを、このJSONフォーマットで出力してください。部位は「胸/背中/肩/腕/脚/体幹/その他」から選んでください。有酸素や自重でweightがない場合は0にしてください。
+
+{"date":"YYYY-MM-DD","records":[{"exercise":"種目名","part":"部位","weight":数値,"reps":数値,"sets":数値,"memo":"メモ"}]}
+
+---ここに筋トレログを貼る---</div>
+      <button class="copy-btn" onclick="copyPrompt()">📋 プロンプトをコピー</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">JSONを貼り付けて取り込む</div>
+      <div class="form-group">
+        <label>ClaudeのJSON出力をここに貼り付け</label>
+        <textarea id="claude-json" rows="7" placeholder='{"date":"2026-04-12","records":[{"exercise":"ベンチプレス","part":"胸","weight":80,"reps":8,"sets":3,"memo":""}]}'></textarea>
+      </div>
+      <div id="import-alert"></div>
+      <div id="import-preview"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-secondary" onclick="clearImport()">クリア</button>
+        <button class="btn btn-secondary" onclick="previewImport()">確認</button>
+        <button class="btn btn-success" onclick="confirmImport()">取り込む</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-add" onclick="switchTab('add', this)">
+    <span class="nav-icon">➕</span>追加
+  </button>
+  <button class="nav-item" id="nav-list" onclick="switchTab('list', this)">
+    <span class="nav-icon">📋</span>一覧
+  </button>
+  <button class="nav-item" id="nav-summary" onclick="switchTab('summary', this)">
+    <span class="nav-icon">📊</span>サマリー
+  </button>
+  <button class="nav-item" id="nav-claude" onclick="switchTab('claude', this)">
+    <span class="nav-icon">🤖</span>Claude
+  </button>
+</nav>
+
+<script>
+const STORAGE_KEY = 'workout_records_v1';
+let records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+let editingId = null;
+let pendingImport = null;
+
+document.getElementById('inp-date').value = today();
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+function partClass(part) {
+  const map = { '胸':'chest','背中':'back','肩':'shoulder','腕':'arm','脚':'leg','体幹':'core' };
+  return 'part-' + (map[part] || 'other');
+}
+
+// ── 手動入力 ──
+function saveRecord() {
+  const date     = document.getElementById('inp-date').value;
+  const part     = document.getElementById('inp-part').value;
+  const exercise = document.getElementById('inp-exercise').value.trim();
+  const weight   = parseFloat(document.getElementById('inp-weight').value) || 0;
+  const reps     = parseInt(document.getElementById('inp-reps').value) || 0;
+  const sets     = parseInt(document.getElementById('inp-sets').value) || 0;
+  const memo     = document.getElementById('inp-memo').value.trim();
+
+  if (!date || !exercise || reps < 1 || sets < 1) {
+    alert('日付・種目・レップ数・セット数は必須です');
+    return;
+  }
+
+  if (editingId !== null) {
+    const idx = records.findIndex(r => r.id === editingId);
+    if (idx >= 0) records[idx] = { ...records[idx], date, part, exercise, weight, reps, sets, memo };
+    editingId = null;
+    document.getElementById('save-btn').textContent = '保存';
+  } else {
+    records.push({ id: Date.now() + Math.random(), date, part, exercise, weight, reps, sets, memo });
+  }
+
+  saveToStorage();
+  clearForm();
+  renderAll();
+
+  // 保存後に一覧へ
+  const listNav = document.getElementById('nav-list');
+  switchTab('list', listNav);
+
+  // 一時的にフラッシュ
+  listNav.style.color = '#80ffb0';
+  setTimeout(() => { if (!listNav.classList.contains('active')) listNav.style.color = ''; }, 800);
+}
+
+function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  records = records.filter(r => r.id !== id);
+  saveToStorage();
+  renderAll();
+}
+
+function editRecord(id) {
+  const r = records.find(r => r.id === id);
+  if (!r) return;
+  document.getElementById('inp-date').value     = r.date;
+  document.getElementById('inp-part').value     = r.part;
+  document.getElementById('inp-exercise').value = r.exercise;
+  document.getElementById('inp-weight').value   = r.weight;
+  document.getElementById('inp-reps').value     = r.reps;
+  document.getElementById('inp-sets').value     = r.sets;
+  document.getElementById('inp-memo').value     = r.memo;
+  editingId = id;
+  document.getElementById('save-btn').textContent = '更新';
+  switchTab('add', document.getElementById('nav-add'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearForm() {
+  document.getElementById('inp-date').value     = today();
+  document.getElementById('inp-part').value     = '胸';
+  document.getElementById('inp-exercise').value = '';
+  document.getElementById('inp-weight').value   = '';
+  document.getElementById('inp-reps').value     = '';
+  document.getElementById('inp-sets').value     = '';
+  document.getElementById('inp-memo').value     = '';
+  editingId = null;
+  document.getElementById('save-btn').textContent = '保存';
+}
+
+// ── Claude連携 ──
+function copyPrompt() {
+  const text = `以下の筋トレログを、このJSONフォーマットで出力してください。部位は「胸/背中/肩/腕/脚/体幹/その他」から選んでください。有酸素や自重でweightがない場合は0にしてください。
+
+{"date":"YYYY-MM-DD","records":[{"exercise":"種目名","part":"部位","weight":数値,"reps":数値,"sets":数値,"memo":"メモ"}]}
+
+---ここに筋トレログを貼る---`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ コピーしました！';
+    setTimeout(() => { btn.textContent = '📋 プロンプトをコピー'; }, 2000);
+  });
+}
+
+function parseClaudeJSON(text) {
+  const codeMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const raw = codeMatch ? codeMatch[1].trim() : text.trim();
+  return JSON.parse(raw);
+}
+
+function setImportAlert(msg, type) {
+  document.getElementById('import-alert').innerHTML =
+    msg ? `<div class="alert alert-${type}">${msg}</div>` : '';
+}
+
+function previewImport() {
+  const text = document.getElementById('claude-json').value.trim();
+  if (!text) { setImportAlert('JSONを貼り付けてください', 'error'); return; }
+  try {
+    const data = parseClaudeJSON(text);
+    if (!data.date || !Array.isArray(data.records)) throw new Error('フォーマットが正しくありません');
+    pendingImport = data;
+
+    const rows = data.records.map(r => `
+      <div class="preview-row">
+        <span class="badge ${partClass(r.part)}">${r.part}</span>
+        <span class="preview-ex">${r.exercise}</span>
+        <span class="preview-detail">${r.weight > 0 ? r.weight+'kg ' : ''}${r.reps}rep × ${r.sets}set</span>
+      </div>`).join('');
+
+    document.getElementById('import-preview').innerHTML = `
+      <div class="preview-card">
+        <h3>プレビュー — ${data.date}（${data.records.length}件）</h3>
+        ${rows}
+      </div>`;
+    setImportAlert('内容を確認して「取り込む」をタップ', 'success');
+  } catch(e) {
+    setImportAlert('JSONの解析に失敗: ' + e.message, 'error');
+    document.getElementById('import-preview').innerHTML = '';
+    pendingImport = null;
+  }
+}
+
+function confirmImport() {
+  if (!pendingImport) { previewImport(); return; }
+  const { date, records: newRecs } = pendingImport;
+  newRecs.forEach((r, i) => {
+    records.push({
+      id: Date.now() + i + Math.random(),
+      date,
+      part: r.part || 'その他',
+      exercise: r.exercise,
+      weight: Number(r.weight) || 0,
+      reps: Number(r.reps) || 1,
+      sets: Number(r.sets) || 1,
+      memo: r.memo || ''
+    });
+  });
+  saveToStorage();
+  renderAll();
+  setImportAlert(`✅ ${newRecs.length}件を追加しました！`, 'success');
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('claude-json').value = '';
+  pendingImport = null;
+}
+
+function clearImport() {
+  document.getElementById('claude-json').value = '';
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('import-alert').innerHTML = '';
+  pendingImport = null;
+}
+
+// ── フィルター ──
+function getFiltered() {
+  const fPart     = document.getElementById('f-part').value;
+  const fExercise = document.getElementById('f-exercise').value.toLowerCase();
+  const fFrom     = document.getElementById('f-from').value;
+  const fTo       = document.getElementById('f-to').value;
+  return records.filter(r => {
+    if (fPart && r.part !== fPart) return false;
+    if (fExercise && !r.exercise.toLowerCase().includes(fExercise)) return false;
+    if (fFrom && r.date < fFrom) return false;
+    if (fTo && r.date > fTo) return false;
+    return true;
+  });
+}
+
+function applyFilter() { renderList(); }
+
+// ── Render ──
+function renderList() {
+  const filtered = getFiltered().slice().sort((a, b) => b.date.localeCompare(a.date));
+  const el = document.getElementById('record-list');
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty">記録がありません</div>';
+    return;
+  }
+
+  // 日付ごとにグループ化
+  const groups = {};
+  filtered.forEach(r => {
+    if (!groups[r.date]) groups[r.date] = [];
+    groups[r.date].push(r);
+  });
+
+  const days = ['日','月','火','水','木','金','土'];
+  el.innerHTML = Object.entries(groups).map(([date, recs]) => {
+    const dt = new Date(date + 'T00:00:00');
+    const dayLabel = `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}（${days[dt.getDay()]}）`;
+    const parts = [...new Set(recs.map(r => r.part))];
+    const dayVol = recs.reduce((s, r) => s + r.weight * r.reps * r.sets, 0);
+
+    const rows = recs.map(r => {
+      const vol = r.weight > 0 ? (r.weight * r.reps * r.sets).toLocaleString() + ' kg' : '—';
+      return `
+      <div class="day-rec-row">
+        <div class="day-rec-main">
+          <span class="badge ${partClass(r.part)}">${r.part}</span>
+          <span class="day-rec-exercise">${r.exercise}</span>
+        </div>
+        <div class="day-rec-nums">
+          ${r.weight > 0 ? `<span class="day-rec-num">${r.weight}kg</span>` : '<span class="day-rec-num">—</span>'}
+          <span class="day-rec-num">${r.reps}rep</span>
+          <span class="day-rec-num">${r.sets}set</span>
+          <span class="day-rec-vol">総量 ${vol}</span>
+        </div>
+        ${r.memo ? `<div class="rec-memo">📝 ${r.memo}</div>` : ''}
+        <div class="rec-card-actions">
+          <button class="btn btn-secondary btn-sm" onclick="editRecord(${r.id})">編集</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRecord(${r.id})">削除</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="day-group">
+      <div class="day-group-header">
+        <span class="day-group-date">${dayLabel}</span>
+        <span class="day-group-info">${recs.length}種目${dayVol > 0 ? ' ／ 総量 ' + dayVol.toLocaleString() + 'kg' : ''}</span>
+      </div>
+      <div class="day-group-parts">${parts.map(p => `<span class="badge ${partClass(p)}">${p}</span>`).join('')}</div>
+      <div class="day-group-body">${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSummary() {
+  const map = {};
+  records.forEach(r => {
+    if (!map[r.exercise]) map[r.exercise] = { part: r.part, count: 0, maxWeight: 0, totalVol: 0, lastDate: '' };
+    map[r.exercise].count++;
+    map[r.exercise].maxWeight = Math.max(map[r.exercise].maxWeight, r.weight);
+    map[r.exercise].totalVol += r.weight * r.reps * r.sets;
+    if (r.date > map[r.exercise].lastDate) map[r.exercise].lastDate = r.date;
+  });
+  const el = document.getElementById('summary-list');
+  const entries = Object.entries(map).sort((a, b) => b[1].lastDate.localeCompare(a[1].lastDate));
+  if (entries.length === 0) { el.innerHTML = '<div class="empty">記録がありません</div>'; return; }
+  el.innerHTML = entries.map(([ex, d]) => `
+    <div class="summary-card">
+      <div class="summary-card-header">
+        <span class="summary-card-title">${ex}</span>
+        <span class="badge ${partClass(d.part)}">${d.part}</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text2);">最終: ${d.lastDate}</div>
+      <div class="summary-pills">
+        <div class="s-pill"><span>セッション数</span>${d.count}回</div>
+        <div class="s-pill"><span>最大重量</span>${d.maxWeight > 0 ? d.maxWeight+'kg' : '—'}</div>
+        <div class="s-pill"><span>累計ボリューム</span>${d.totalVol > 0 ? d.totalVol.toLocaleString()+'kg' : '—'}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderStats() {
+  const total    = records.length;
+  const days     = new Set(records.map(r => r.date)).size;
+  const exCount  = new Set(records.map(r => r.exercise)).size;
+  const totalVol = records.reduce((s, r) => s + r.weight * r.reps * r.sets, 0);
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="val">${total}</div><div class="lbl">総セット数</div></div>
+    <div class="stat-card"><div class="val">${days}</div><div class="lbl">日数</div></div>
+    <div class="stat-card"><div class="val">${exCount}</div><div class="lbl">種目数</div></div>
+    <div class="stat-card"><div class="val">${(totalVol/1000).toFixed(1)}t</div><div class="lbl">累計ボリューム</div></div>`;
+}
+
+function updateExerciseDatalist() {
+  const exercises = [...new Set(records.map(r => r.exercise))];
+  document.getElementById('exercise-list').innerHTML = exercises.map(e => `<option value="${e}">`).join('');
+}
+
+function renderAll() {
+  renderStats();
+  renderList();
+  renderSummary();
+  updateExerciseDatalist();
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => { b.classList.remove('active'); b.style.color = ''; });
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+renderAll();
+</script>
+</body>
+</html>
